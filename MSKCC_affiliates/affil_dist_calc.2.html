@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>Locate Closest Affiliate</code></title>
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0px;
+        padding: 0px
+      }
+      
+      #panel {
+        position: absolute;
+        top: 5px;
+        left: 50%;
+        margin-left: -180px;
+        z-index: 5;
+        background-color: #fff;
+        padding: 5px;
+        border: 1px solid #999;
+      }
+
+      #map-canvas {
+        height: 85%;
+        width: 50%;
+      }
+
+      #content-pane {
+        float:right;
+        width:45%;
+        padding-left: 2%;
+        padding-top: 2%;
+      }
+
+      #control {
+        background: #fff;
+        padding: 5px;
+        font-size: 14px;
+        font-family: Arial;
+        border: 1px solid #ccc;
+        box-shadow: 0 2px 2px rgba(33, 33, 33, 0.4);
+        display: none;
+      }
+
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA3oDYSFAMMYdiTaZ598rOpkHS1rdNL5Tw"></script>
+    <script>
+    var directionsDisplay;
+    var trafficLayer = new google.maps.TrafficLayer();
+    var directionsService = new google.maps.DirectionsService();
+
+    var main = new google.maps.LatLng(40.764383, -73.956672);
+    var harrison = new google.maps.LatLng(41.028406, -73.733114);
+    var commack = new google.maps.LatLng(40.809824, -73.293386);
+    var monmouth = new google.maps.LatLng(40.370890, -74.147320);
+    var rockville = new google.maps.LatLng(40.688599, -73.631961);
+    var basking = new google.maps.LatLng(40.639696, -74.584031);
+    var sleephollow = new google.maps.LatLng(41.108714, -73.864138);
+
+    var loc = ['Main', 'West Harrison', 'Commack', 'Basking Ridge', 'Sleepy Hollow', 'Rockville', 'Monmouth'];
+
+    function initialize() {
+      directionsDisplay = new google.maps.DirectionsRenderer();
+      var mapOptions = {
+        zoom: 8,
+        center: main
+      };
+      var map = new google.maps.Map(document.getElementById('map-canvas'),
+          mapOptions);
+      directionsDisplay.setMap(map);
+      //directionsDisplay.setPanel(document.getElementById('directions-panel'));
+      trafficLayer.setMap(map);
+      var control = document.getElementById('control');
+      control.style.display = 'block';
+      map.controls[google.maps.ControlPosition.TOP_CENTER].push(control);
+    }
+
+    function calcRoute() {
+      var start = origin1;
+      var affiliate = document.getElementById('affiliate').value;
+      var request = {
+        origin: start,
+        destination: affiliate,
+        travelMode: google.maps.TravelMode.DRIVING
+      };
+      directionsService.route(request, function(response, status) {
+        if (status == google.maps.DirectionsStatus.OK) {
+          directionsDisplay.setDirections(response);
+        }
+      });
+    }
+
+    function calculateDistances(form) {
+          origin1 = form.PatientZip.value;
+          var service = new google.maps.DistanceMatrixService();
+          service.getDistanceMatrix(
+            {
+              origins: [origin1],
+              destinations: [main, harrison, commack, basking, sleephollow, rockville, monmouth],
+              travelMode: google.maps.TravelMode.DRIVING,
+              unitSystem: google.maps.UnitSystem.IMPERIAL ,
+              avoidHighways: false,
+              avoidTolls: false
+            }, callback);
+        }
+
+    function callback(response, status) {
+          if (status != google.maps.DistanceMatrixStatus.OK) {
+            alert('Error was: ' + status);
+          } else {
+            var origin = response.originAddresses[0];
+            var destinations = response.destinationAddresses;
+            var allSort = [];
+            var irSort = [];
+            var radSort = [];
+            var labSort = [];
+            var results = response.rows[0].elements;
+
+            function buildSites(siteArray, siteLen) {
+              for (var i = 0; i < siteLen; i++) {
+                dist = results[i].distance.text.slice(0,-2);
+                time = Math.round(results[i].duration.value / 60);
+                siteArray.push([loc[i],dist,time]);
+              };
+            }
+
+            function closest(siteArray) {
+              for (var i = 0; i < 4; i++){
+                siteArray[i].sort(function(a,b) {return a[2] - b[2]});
+              }
+            }
+
+            //Builds arrays of sites based on available treatments.
+            buildSites(allSort, 7);
+            buildSites(irSort, 2);
+            buildSites(radSort, 4);
+            buildSites(labSort, 6);
+
+            //Sorts each array to find closest affiliate.
+            closest([allSort, irSort, radSort, labSort]);
+
+            var outputDiv = document.getElementById("outputDiv");
+            outputDiv.innerHTML = "<strong>All Affiliates:</strong>" + "<br><br>";
+            for (var i = 0; i < allSort.length; i++) {
+                outputDiv.innerHTML += "<u>" + allSort[i][0] + "</u>" + " - " + "<strong>Distance:</strong> " + allSort[i][1] + " miles " + "<strong>Time</strong>: " + allSort[i][2] + " minutes." + "<br>";
+                }
+            var irDiv = document.getElementById("irDiv");
+            irDiv.innerHTML = "<strong>Closest IR Site:</strong>" + "<br><br>" + "<u>" + irSort[0][0] + "</u>" + " - " + "<strong>Distance:</strong> " + irSort[0][1] + "miles " + "<strong>Time</strong>: " + irSort[0][2] + " minutes." + "<br><br>";
+            var radDiv = document.getElementById("radDiv");
+            radDiv.innerHTML = "<strong>Closest Radiology Site:</strong>" + "<br><br>" + "<u>" + radSort[0][0] + "</u>" + " - " + "<strong>Distance:</strong> " + radSort[0][1] + "miles " + "<strong>Time</strong>: " + radSort[0][2] + " minutes." + "<br><br>";
+            var labDiv = document.getElementById("labDiv");
+            labDiv.innerHTML = "<strong>Closest Lab Site:</strong>" + "<br><br>" + "<u>" + labSort[0][0] + "</u>" + " - " + "<strong>Distance:</strong> " + labSort[0][1] + "miles " + "<strong>Time</strong>: " + labSort[0][2] + " minutes." + "<br><br>";
+          }
+      }
+    google.maps.event.addDomListener(window, 'load', initialize);
+    </script>
+  </head>
+  <body>
+      <div id="content-pane">
+      <FORM>
+      Enter the patient's zip code: <input NAME="PatientZip" VALUE="" MAXLENGTH="15" SIZE=15>
+      <p><button id="button" type="button" onclick="calculateDistances(this.form);">Locate Closest Affiliate</button></p><br><br>
+      </FORM>
+        <div id="irDiv"></div>
+        <div id="radDiv"></div>
+        <div id="labDiv"></div>
+        <div id="outputDiv"></div>
+      </div>
+        <div id="control">
+      <strong>Affiliate:</strong>
+      <select id="affiliate" onchange="calcRoute();">
+        <option value="">Select</option>
+        <option value="Memorial Sloan Kettering Cancer Center, York Avenue, New York, NY">Main</option>
+        <option value="500 Westchester Avenue West Harrison, NY 10604">West Harrison</option>
+        <option value="650 Commack Road Commack, NY 11725">Commack</option>
+        <option value="136 Mountain View Boulevard Basking Ridge, NJ 07920">Basking Ridge</option>
+        <option value="777 North Broadway Sleepy Hollow, NY 10591">Sleepy Hollow</option>
+        <option value="1000 North Village Avenue Rockville Centre, NY 11570">Rockville</option>
+        <option value="480 Red Hill Road Middletown, NJ 07748">Monmouth</option>
+      </select>
+    </div>
+    <div id="map-canvas"></div>
+  </body>
+</html>
